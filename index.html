@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Engine</title>
+
+<style>
+body { background:#111; color:#eee; font-family:Arial; padding:12px; }
+textarea, input {
+  width:100%; padding:10px; margin-bottom:10px;
+  background:#222; color:#fff; border:1px solid #444;
+}
+button {
+  width:100%; padding:12px; margin-bottom:8px;
+  background:#333; color:#fff; border:none;
+}
+#output {
+  white-space:pre-wrap;
+  background:#000;
+  padding:12px;
+  margin-top:12px;
+  min-height:200px;
+}
+.status { font-size:12px; margin-bottom:10px; color:#aaa; }
+</style>
+</head>
+
+<body>
+
+<h2>Portfolio Engine</h2>
+<div class="status" id="status">Cycle not run</div>
+
+<textarea id="data" rows="6" placeholder="Paste pricing data here"></textarea>
+<input id="cash" placeholder="Cash available">
+<input id="pending" placeholder="Pending orders">
+
+<button onclick="run('CYCLE')">Run Cycle</button>
+<button onclick="run('PORTFOLIO')">Run Portfolio</button>
+<button onclick="run('DEPLOY')">Run Deploy</button>
+<button onclick="run('LIMITS')">Run Limits</button>
+<button onclick="run('SNIPER')">Run Sniper</button>
+<button onclick="run('RISK')">Run Risk</button>
+<button onclick="run('BEST')">Run Best</button>
+<button onclick="run('DISCOVERY')">Run Discovery</button>
+<button onclick="run('HEDGE')">Run Hedge</button>
+
+<div id="output"></div>
+
+<script>
+let memory = { cycle: "", portfolio: "" };
+
+function buildPrompt(module, data, cash, pending) {
+return `
+GLOBAL SYSTEM RULES:
+- Prices = user input
+- Never skip assets
+- $20 trade edge required
+- PSLV/CGL never fully exit
+
+PORTFOLIO CONSTRAINTS:
+- Core Hedge: 15–40%
+- Producers: 20–40%
+- Speculative: max 15%
+
+CONVICTION MODEL:
+Technical (0–5)
+Macro Alignment (0–3)
+Relative Strength (0–2)
+TOTAL = 0–10
+
+MEMORY:
+Cycle: ${memory.cycle || "Not set"}
+Portfolio: ${memory.portfolio || "Not set"}
+
+MODULE: ${module}
+
+DATA:
+${data}
+
+CASH: ${cash}
+PENDING: ${pending}
+
+OUTPUT:
+- Must be decisive
+- No generic statements
+`;
+}
+
+async function run(module) {
+  const data = document.getElementById("data").value;
+  const cash = document.getElementById("cash").value;
+  const pending = document.getElementById("pending").value;
+
+  if (!data) return alert("Enter pricing data");
+  if (module !== "CYCLE" && !memory.cycle) return alert("Run CYCLE first");
+
+  document.getElementById("output").innerText = "Running...";
+
+  const res = await fetch("/api/run", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ prompt: buildPrompt(module, data, cash, pending) })
+  });
+
+  const json = await res.json();
+  const output = json.output || json.error;
+
+  document.getElementById("output").innerText = output;
+
+  if (module === "CYCLE") {
+    memory.cycle = output;
+    document.getElementById("status").innerText = "Cycle stored ✓";
+  }
+
+  if (module === "PORTFOLIO") {
+    memory.portfolio = output;
+  }
+}
+</script>
+
+</body>
+</html>
