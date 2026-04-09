@@ -17,22 +17,23 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-5",
+        model: "gpt-4.1-mini",
         input: prompt,
-        max_output_tokens: 1500
+        max_output_tokens: 1000
       })
     });
 
+    const text = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      return res.status(500).json({ error: errText });
+      return res.status(500).json({ error: text });
     }
 
-    const data = await response.json();
+    const data = JSON.parse(text);
 
     const output =
       data.output?.[0]?.content?.[0]?.text ||
-      JSON.stringify(data);
+      "No output returned";
 
     res.status(200).json({ output });
 
